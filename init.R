@@ -9,6 +9,7 @@ pkgs <- c(
   'tidyverse',
   'RMariaDB',
   'DBI',
+  'RPostgreSQL',
   'readr',
   'pander',
   'na.tools',
