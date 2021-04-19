@@ -7,9 +7,10 @@ proj_name <- 'baseball'
 pkgs <- c(
   'devtools',
   'tidyverse',
-  'RMariaDB',
-  'DBI',
+  'RPostgres',
   'RPostgreSQL',
+  # 'RMariaDB',
+  'DBI',
   'readr',
   'pander',
   'na.tools',
@@ -64,16 +65,38 @@ options(tibble.print_min=25)
 
 # Initialize Working Directory --------------------------------------------
 
-fx.setdir(proj_name)
+initR::fx.setdir(proj_name)
 
 # Create standard objects -------------------------------------------------
+
+# Connect to DB
+con <- dbConnect(
+  RPostgres::Postgres(),
+  host = ifelse(
+    fromJSON(
+      readLines("http://api.hostip.info/get_json.php",
+                warn = F)
+    )$ip == Sys.getenv('ip'),
+    Sys.getenv('local'),
+    Sys.getenv('ip')
+  ),
+  port = Sys.getenv('postgres_port'),
+  user = Sys.getenv('db_user'),
+  password = Sys.getenv('db_password'),
+  dbname = proj_name,
+  # database = "football",
+  # Server = "localhost\\SQLEXPRESS",
+  # Database = "datawarehouse",
+  NULL
+)
+
 if ((
   Sys.Date() %>% lubridate::wday() > 1 & # If day is greater than Sunday
   Sys.Date() %>% lubridate::wday() < 6 & # and day is less than Saturday
   Sys.time() %>% format("%H") %>% as.integer() >= 17 & # and greater than 5PM
   Sys.time() %>% format("%H") %>% as.integer() <= 23 # and less than 12AM
 ) == TRUE) {
-  source("../initR/con.R")
+  # source("../initR/con.R")
   dbListTables(con)
   dbDisconnect(con)
 }
@@ -86,5 +109,5 @@ today <- format(Sys.Date(), '%Y-%d-%m')
 source('plots/assets/plot_theme.R', echo = F)
 
 
-source('data/statcast.R', echo = F)
+# source('data/statcast.R', echo = F)
 

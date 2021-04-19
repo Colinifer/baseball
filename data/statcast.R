@@ -4,7 +4,6 @@ library(baseballr)
 library(tidyverse)
 library(DBI)
 library(RPostgreSQL)
-library(myDBconnections)
 
 annual_statcast_query <- function(season) {
   
@@ -153,57 +152,46 @@ delete_and_upload <- function(df,
                            user = user, 
                            password = password,
                            host = host, 
-                           port = posrt)
+                           port = port)
   
   query <- paste0('DELETE from statcast where game_year = ', year)
   
-  dbGetQuery(statcast_db, query)
+  DBI::dbGetQuery(statcast_db, query)
   
-  dbWriteTable(statcast_db, "statcast", df, append = TRUE)
+  DBI::dbWriteTable(statcast_db, "statcast", df, append = TRUE, row.names = FALSE)
   
-  dbDisconnect(statcast_db)
+  DBI::dbDisconnect(statcast_db)
   rm(statcast_db)
 }
 
-# create table and upload first year
 
-payload_statcast <- annual_statcast_query(2008)
+con <- dbConnect(
+  RPostgres::Postgres(),
+  host = ifelse(
+    fromJSON(
+      readLines("http://api.hostip.info/get_json.php",
+                warn = F)
+    )$ip == Sys.getenv('ip'),
+    Sys.getenv('local'),
+    Sys.getenv('ip')
+  ),
+  port = Sys.getenv('postgres_port'),
+  user = Sys.getenv('db_user'),
+  password = Sys.getenv('db_password'),
+  dbname = proj_name,
+  # database = "football",
+  # Server = "localhost\\SQLEXPRESS",
+  # Database = "datawarehouse",
+  NULL
+)
 
-df <- format_append_statcast(df = payload_statcast)
-
-# connect to your database
-# here I am using my personal package that has a wrapper function for this
-
-statcast_db <- myDBconnections::connect_Statcast_postgreSQL()
-
-# to connect to your own database you would use something like
-# statcast_db <- DBI::dbConnect(RPostgreSQL::PostgreSQL(), 
-# dbname = <database name>, 
-# user = <user name>, 
-#	password = <your password>, 
-#	host = "localhost", 
-# port = 5432)
-
-dbWriteTable(statcast_db, "statcast", df, overwrite = TRUE)
-
-# disconnect from database
-
-myDBconnections::disconnect_Statcast_postgreSQL(statcast_db)
-
-# or you can simply run 
-# DBI::dbDisconnect(statcast_db)
-
-rm(df)
-gc()
-
-statcast_db <- myDBconnections::connect_Statcast_postgreSQL()
-
-tbl(statcast_db, 'statcast') %>%
+tbl(con, 'statcast') %>%
   filter(game_year == 2008) %>%
   count()
 
 
-map(.x = seq(2009, 2019, 1), 
+# map(.x = seq(2009, 2019, 1), 
+map(.x = 2021,
     ~{payload_statcast <- annual_statcast_query(season = .x)
     
     message(paste0('Formatting payload for ', .x, '...'))
@@ -215,17 +203,18 @@ map(.x = seq(2009, 2019, 1),
     delete_and_upload(df, 
                       year = .x, 
                       db_driver = 'PostgreSQL', 
-                      dbname = 'your_db_name', 
-                      user = 'your_user_name', 
-                      password = 'your_password', 
-                      host = 'local_host', 
-                      port = 5432)
-    
-    statcast_db <- myDBconnections::connect_Statcast_postgreSQL()
-    
-    dbGetQuery(statcast_db, 'select game_year, count(game_year) from statcast group by game_year')
-    
-    myDBconnections::disconnect_Statcast_postgreSQL(statcast_db)
+                      dbname = proj_name, 
+                      user = Sys.getenv('db_user'), 
+                      password = Sys.getenv('db_password'), 
+                      host = ifelse(
+                        fromJSON(
+                          readLines("http://api.hostip.info/get_json.php",
+                                    warn = F)
+                        )$ip == Sys.getenv('ip'),
+                        Sys.getenv('local'),
+                        Sys.getenv('ip')
+                      ), 
+                      port = Sys.getenv('postgres_port'))
     
     message('Sleeping and collecting garbage...')
     
@@ -236,29 +225,29 @@ map(.x = seq(2009, 2019, 1),
     })
 
 
-tbl(statcast_db, 'statcast') %>%
+tbl(con, 'statcast') %>%
   group_by(game_year) %>%
   count() %>%
   collect()
 
 
 
-dbGetQuery(statcast_db, "drop index statcast_index")
+dbGetQuery(con, "drop index statcast_index")
 
-dbGetQuery(statcast_db, "create index statcast_index on statcast (game_date)")
+dbGetQuery(con, "create index statcast_index on statcast (game_date)")
 
-dbGetQuery(statcast_db, "drop index statcast_game_year")
+dbGetQuery(con, "drop index statcast_game_year")
 
-dbGetQuery(statcast_db, "create index statcast_game_year on statcast (game_year)")
+dbGetQuery(con, "create index statcast_game_year on statcast (game_year)")
 
-dbGetQuery(statcast_db, "drop index statcast_type")
+dbGetQuery(con, "drop index statcast_type")
 
-dbGetQuery(statcast_db, "create index statcast_type on statcast (type)")
+dbGetQuery(con, "create index statcast_type on statcast (type)")
 
-dbGetQuery(statcast_db, "drop index statcast_pitcher_index")
+dbGetQuery(con, "drop index statcast_pitcher_index")
 
-dbGetQuery(statcast_db, "create index statcast_pitcher_index on statcast (pitcher)")
+dbGetQuery(con, "create index statcast_pitcher_index on statcast (pitcher)")
 
-dbGetQuery(statcast_db, "drop index statcast_batter_index")
+dbGetQuery(con, "drop index statcast_batter_index")
 
-dbGetQuery(statcast_db, "create index statcast_batter_index on statcast (batter)")
+dbGetQuery(con, "create index statcast_batter_index on statcast (batter)")
