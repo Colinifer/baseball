@@ -138,116 +138,57 @@ format_append_statcast <- function(df) {
 
 delete_and_upload <- function(df, 
                               year, 
-                              db_driver = "PostgreSQL", 
-                              dbname, 
-                              user, 
-                              password, 
-                              host = 'local_host', 
-                              port = 5432) {
+                              con) {
   
   pg <- dbDriver(db_driver)
   
-  statcast_db <- dbConnect(pg, 
-                           dbname = dbname, 
-                           user = user, 
-                           password = password,
-                           host = host, 
-                           port = port)
-  
   query <- paste0('DELETE from statcast where game_year = ', year)
   
-  DBI::dbGetQuery(statcast_db, query)
+  DBI::dbGetQuery(con, query)
   
-  DBI::dbWriteTable(statcast_db, "statcast", df, append = TRUE, row.names = FALSE)
+  DBI::dbWriteTable(con, "statcast", df, append = TRUE, row.names = FALSE)
   
-  DBI::dbDisconnect(statcast_db)
-  rm(statcast_db)
+  DBI::dbDisconnect(con)
+  rm(con)
 }
 
 
-con <- dbConnect(
-  RPostgres::Postgres(),
-  host = ifelse(
-    fromJSON(
-      readLines("http://api.hostip.info/get_json.php",
-                warn = F)
-    )$ip == Sys.getenv('ip'),
-    Sys.getenv('local'),
-    Sys.getenv('ip')
-  ),
-  port = Sys.getenv('postgres_port'),
-  user = Sys.getenv('db_user'),
-  password = Sys.getenv('db_password'),
-  dbname = proj_name,
-  # database = "football",
-  # Server = "localhost\\SQLEXPRESS",
-  # Database = "datawarehouse",
-  NULL
-)
+# tbl(fx.db_con(), 'statcast') %>%
+#   filter(game_year == 2008) %>%
+#   count()
 
-tbl(con, 'statcast') %>%
-  filter(game_year == 2008) %>%
-  count()
+# tbl(fx.db_con(), 'statcast') %>%
+#   group_by(game_year) %>%
+#   count() %>%
+#   collect()
 
+fx.delete_db_index <- function(hockey_db) {
+  queries <- c(
+    'DROP INDEX statcast_index;',
+    'DROP INDEX statcast_game_year;',
+    'DROP INDEX statcast_type;',
+    'DROP INDEX statcast_pitcher_index;',
+    'DROP INDEX statcast_batter_index;'
+  )
+  
+  map(queries, function(x){
+    print(queries)
+    dbSendQuery(hockey_db, queries)
+  })
+}
 
-# map(.x = seq(2009, 2019, 1), 
-map(.x = 2021,
-    ~{payload_statcast <- annual_statcast_query(season = .x)
+fx.create_db_index <- function(baseball_db) {
+  queries <- c(
+    'CREATE INDEX statcast_index ON statcast (game_date);',
+    'CREATE INDEX statcast_game_year ON statcast (game_year);',
+    'CREATE INDEX statcast_type ON statcast (type);',
+    'CREATE INDEX statcast_pitcher_index ON statcase (pitcher);',
+    'CREATE INDEX statcast_batter_index ONstatcast (batter);'
     
-    message(paste0('Formatting payload for ', .x, '...'))
-    
-    df <- format_append_statcast(df = payload_statcast)
-    
-    message(paste0('Deleting and uploading ', .x, ' data to database...'))
-    
-    delete_and_upload(df, 
-                      year = .x, 
-                      db_driver = 'PostgreSQL', 
-                      dbname = proj_name, 
-                      user = Sys.getenv('db_user'), 
-                      password = Sys.getenv('db_password'), 
-                      host = ifelse(
-                        fromJSON(
-                          readLines("http://api.hostip.info/get_json.php",
-                                    warn = F)
-                        )$ip == Sys.getenv('ip'),
-                        Sys.getenv('local'),
-                        Sys.getenv('ip')
-                      ), 
-                      port = Sys.getenv('postgres_port'))
-    
-    message('Sleeping and collecting garbage...')
-    
-    Sys.sleep(5*60)
-    
-    gc()
-    
-    })
-
-
-tbl(con, 'statcast') %>%
-  group_by(game_year) %>%
-  count() %>%
-  collect()
-
-
-
-dbGetQuery(con, "drop index statcast_index")
-
-dbGetQuery(con, "create index statcast_index on statcast (game_date)")
-
-dbGetQuery(con, "drop index statcast_game_year")
-
-dbGetQuery(con, "create index statcast_game_year on statcast (game_year)")
-
-dbGetQuery(con, "drop index statcast_type")
-
-dbGetQuery(con, "create index statcast_type on statcast (type)")
-
-dbGetQuery(con, "drop index statcast_pitcher_index")
-
-dbGetQuery(con, "create index statcast_pitcher_index on statcast (pitcher)")
-
-dbGetQuery(con, "drop index statcast_batter_index")
-
-dbGetQuery(con, "create index statcast_batter_index on statcast (batter)")
+  )
+  
+  map(queries, function(x){
+    print(queries)
+    dbSendQuery(baseball_db, queries)
+  })
+}

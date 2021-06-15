@@ -56,7 +56,14 @@ if (any('bbplot' %in%
   library(devtools)
   devtools::install_github('bbc/bbplot')
 }
-invisible(lapply(pkgs, library, character.only = TRUE))
+invisible(lapply(pkgs, function(x) {
+  suppressMessages(suppressWarnings(library(
+    x,
+    warn.conflicts = FALSE,
+    quietly = TRUE,
+    character.only = TRUE
+  )))
+}))
 rm(pkgs, installed_packages)
 
 '%notin%' <- Negate('%in%')
@@ -70,25 +77,7 @@ initR::fx.setdir(proj_name)
 # Create standard objects -------------------------------------------------
 
 # Connect to DB
-con <- dbConnect(
-  RPostgres::Postgres(),
-  host = ifelse(
-    fromJSON(
-      readLines("http://api.hostip.info/get_json.php",
-                warn = F)
-    )$ip == Sys.getenv('ip'),
-    Sys.getenv('local'),
-    Sys.getenv('ip')
-  ),
-  port = Sys.getenv('postgres_port'),
-  user = Sys.getenv('db_user'),
-  password = Sys.getenv('db_password'),
-  dbname = proj_name,
-  # database = "football",
-  # Server = "localhost\\SQLEXPRESS",
-  # Database = "datawarehouse",
-  NULL
-)
+con <- initR::fx.db_con()
 
 if ((
   Sys.Date() %>% lubridate::wday() > 1 & # If day is greater than Sunday
@@ -107,7 +96,27 @@ date <- Sys.Date()
 
 today <- format(Sys.Date(), '%Y-%d-%m')
 source('plots/assets/plot_theme.R', echo = F)
+source('scripts/statcast.R', echo = F)
 
-
-# source('data/statcast.R', echo = F)
+# Scrape latest statcast data
+map(.x = 2021,
+    ~{payload_statcast <- annual_statcast_query(season = .x)
+    
+    message(paste0('Formatting payload for ', .x, '...'))
+    
+    df <- format_append_statcast(df = payload_statcast)
+    
+    message(paste0('Deleting and uploading ', .x, ' data to database...'))
+    
+    delete_and_upload(df, 
+                      year = .x, 
+                      con = fx.db_con())
+    
+    message('Sleeping and collecting garbage...')
+    
+    # Sys.sleep(5*60)
+    
+    gc()
+    
+    })
 
