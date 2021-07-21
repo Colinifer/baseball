@@ -87,8 +87,10 @@ if ((
 ) == TRUE) {
   # source("../initR/con.R")
   dbListTables(con)
+  map(.x = dbListTables(con), ~tbl(con, .x))
   dbDisconnect(con)
 }
+
 
 current_season <- 2020
 year <- substr(Sys.Date(), 1, 4)

@@ -7,7 +7,7 @@ library(RPostgreSQL)
 
 annual_statcast_query <- function(season) {
   
-  data_base_column_types <- read_csv("https://app.box.com/shared/static/q326nuker938n2nduy81au67s2pf9a3j.csv")
+  data_base_column_types <- read_csv('data/statcast_db/column_types.csv')
   
   dates <- seq.Date(as.Date(paste0(season, '-03-01')),
                     as.Date(paste0(season, '-12-01')), by = '4 days')
@@ -140,14 +140,11 @@ delete_and_upload <- function(df,
                               year, 
                               con) {
   
-  pg <- dbDriver(db_driver)
-  
-  query <- paste0('DELETE from statcast where game_year = ', year)
+  # pg <- dbDriver(db_driver)
+    query <- paste0('DELETE from statcast where game_year = ', year)
   
   DBI::dbGetQuery(con, query)
-  
   DBI::dbWriteTable(con, "statcast", df, append = TRUE, row.names = FALSE)
-  
   DBI::dbDisconnect(con)
   rm(con)
 }
