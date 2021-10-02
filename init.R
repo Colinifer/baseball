@@ -77,20 +77,7 @@ initR::fx.setdir(proj_name)
 # Create standard objects -------------------------------------------------
 
 # Connect to DB
-con <- initR::fx.db_con()
-
-if ((
-  Sys.Date() %>% lubridate::wday() > 1 & # If day is greater than Sunday
-  Sys.Date() %>% lubridate::wday() < 7 & # and day is less than Saturday
-  Sys.time() %>% format("%H") %>% as.integer() >= 17 & # and greater than 5PM
-  Sys.time() %>% format("%H") %>% as.integer() <= 23 # and less than 12AM
-) == TRUE) {
-  # source("../initR/con.R")
-  dbListTables(con)
-  map(.x = dbListTables(con), ~tbl(con, .x))
-  dbDisconnect(con)
-}
-
+con <- initR::fx.db_con(x.host = 'localhost')
 
 current_season <- 2020
 year <- substr(Sys.Date(), 1, 4)
