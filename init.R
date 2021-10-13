@@ -79,7 +79,7 @@ initR::fx.setdir(proj_name)
 # Connect to DB
 con <- initR::fx.db_con(x.host = 'localhost')
 
-current_season <- 2020
+current_season <- 2021
 year <- substr(Sys.Date(), 1, 4)
 date <- Sys.Date()
 
@@ -99,7 +99,7 @@ map(.x = 2021,
     
     delete_and_upload(df, 
                       year = .x, 
-                      con = fx.db_con())
+                      con = fx.db_con(x.host = 'localhost'))
     
     message('Sleeping and collecting garbage...')
     

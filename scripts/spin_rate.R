@@ -1,4 +1,4 @@
-con <- initR::fx.db_con()
+con <- initR::fx.db_con(x.host = 'localhost')
 
 statcast_df <- tbl(con, 'statcast') %>% 
   select(game_year,
@@ -7,21 +7,14 @@ statcast_df <- tbl(con, 'statcast') %>%
          home_team,
          away_team,
          pitcher,
+         pitch_type,
          release_spin_rate
   ) %>% 
-  filter(game_year >= '2017') %>% 
+  filter(game_year >= current_season-4) %>% 
   collect()
 
 gg.league_spin <- statcast_df %>% 
-  select(game_year,
-         game_date,
-         game_pk,
-         home_team,
-         away_team,
-         pitcher,
-         release_spin_rate
-         ) %>% 
-  identity() %>% 
+  filter(pitch_type %in% c('FF')) %>% 
   mutate(
     game_year = as.character(game_year),
     game_day = game_date %>% as.Date() %>% format('%m-%d'),
@@ -32,13 +25,13 @@ gg.league_spin <- statcast_df %>%
   ) %>% 
   group_by(
     game_year,
-    game_day
+    game_date
     # pitcher
   ) %>% 
   summarise(spin_rate = mean(release_spin_rate, na.rm = T),
             current_year = first(current_year),
             column_color = first(column_color)
-            ) %>% 
+            ) %>%
   mutate(
     game_number = row_number()
   ) %>% 
@@ -50,14 +43,18 @@ gg.league_spin <- statcast_df %>%
     aes(x = game_number,
     y = spin_rate)
   ) + 
+  geom_point() +
   geom_smooth(
-    aes(color = column_color)
+    aes(
+      color = '#0580DC'
+    ),
+    method = 'loess' 
   ) + 
   facet_wrap(vars(game_year),
              nrow = 1) +
   # bbplot::bbc_style() + 
   labs(
-    x = 'Season',
+    x = 'Game #',
     y = 'Avgerage Spin Rate',
     title = glue('League average Spin Rate by game #'),
     subtitle = glue(''),
