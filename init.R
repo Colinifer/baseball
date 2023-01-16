@@ -79,7 +79,7 @@ initR::fx.setdir(proj_name)
 # Connect to DB
 con <- initR::fx.db_con(x.host = 'localhost')
 
-current_season <- 2021
+current_season <- 2022
 year <- substr(Sys.Date(), 1, 4)
 date <- Sys.Date()
 
@@ -88,7 +88,7 @@ source('plots/assets/plot_theme.R', echo = F)
 source('scripts/statcast.R', echo = F)
 
 # Scrape latest statcast data
-map(.x = 2021,
+map(.x = 2022,
     ~{payload_statcast <- annual_statcast_query(season = .x)
     
     message(paste0('Formatting payload for ', .x, '...'))
