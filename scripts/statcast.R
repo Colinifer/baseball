@@ -141,10 +141,10 @@ delete_and_upload <- function(df,
                               con) {
   
   # pg <- dbDriver(db_driver)
-    query <- paste0('DELETE from statcast where game_year = ', year)
+  query <- paste0('DELETE from statcast where game_year = ', year)
   
-  DBI::dbGetQuery(con, query)
-  DBI::dbWriteTable(con, "statcast", df, append = TRUE, row.names = FALSE)
+  DBI::dbExecute(con, query)
+  DBI::dbWriteTable(con, "statcast", as.data.frame(df), append = TRUE, row.names = FALSE)
   DBI::dbDisconnect(con)
   rm(con)
 }

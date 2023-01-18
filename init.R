@@ -1,4 +1,10 @@
+# Most of this package assumes my private R package initR is pre-installed
+# and an existing PostgreSQL environment is running on your local
+# machine and/or network.
+
+
 # Packages & Init Setup ---------------------------------------------------
+
 proj_name <- 'baseball'
 # setwd('~/Documents/dev/baseball')
 
@@ -99,7 +105,7 @@ map(.x = 2022,
     
     delete_and_upload(df, 
                       year = .x, 
-                      con = fx.db_con(x.host = 'localhost'))
+                      con = initR::fx.db_con(x.host = 'localhost'))
     
     message('Sleeping and collecting garbage...')
     
